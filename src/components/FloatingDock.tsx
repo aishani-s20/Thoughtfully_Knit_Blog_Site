@@ -29,7 +29,6 @@ export const FloatingDock: React.FC = () => {
 
     weatherMode,
     activeWeather,
-    weatherCity,
     weatherTemp,
     setWeatherMode,
 
@@ -157,7 +156,7 @@ export const FloatingDock: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 {getWeatherIcon(activeWeather)}
-                <span>Auto ({weatherCity})</span>
+                <span>Auto</span>
               </div>
               {weatherMode === 'auto' && <span className="text-[10px]">Active</span>}
             </button>

@@ -2,7 +2,6 @@ import { WeatherCondition } from '../types/index.ts';
 
 interface WeatherCache {
   condition: WeatherCondition;
-  city: string;
   temperatureC: number;
   timestamp: number;
 }
@@ -10,12 +9,11 @@ interface WeatherCache {
 let cachedWeather: WeatherCache | null = null;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-export async function detectLocalWeather(): Promise<{ condition: WeatherCondition; city: string; temp: number }> {
+export async function detectLocalWeather(): Promise<{ condition: WeatherCondition; temp: number }> {
   // Check memory cache first
   if (cachedWeather && Date.now() - cachedWeather.timestamp < CACHE_TTL_MS) {
     return {
       condition: cachedWeather.condition,
-      city: cachedWeather.city,
       temp: cachedWeather.temperatureC,
     };
   }
@@ -24,9 +22,8 @@ export async function detectLocalWeather(): Promise<{ condition: WeatherConditio
     // 1. Attempt browser geolocation with quick timeout
     const coords = await getBrowserCoordinates().catch(() => null);
 
-    const lat = coords ? coords.latitude : 12.9716; // Default to Bangalore (monsoon capital) if denied
+    const lat = coords ? coords.latitude : 12.9716; // Default coordinates if denied
     const lon = coords ? coords.longitude : 77.5946;
-    const defaultCity = coords ? 'Local Atmosphere' : 'Bangalore, IN';
 
     // 2. Query Open-Meteo edge API (free, open-access, zero API key required)
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&timezone=auto`;
@@ -43,18 +40,16 @@ export async function detectLocalWeather(): Promise<{ condition: WeatherConditio
 
     cachedWeather = {
       condition,
-      city: defaultCity,
       temperatureC: temp,
       timestamp: Date.now(),
     };
 
-    return { condition, city: defaultCity, temp };
+    return { condition, temp };
   } catch (err) {
     console.warn('Weather detection fallback triggered:', err);
     // Graceful fallback to contemplative rain
     return {
       condition: 'rain',
-      city: 'Atmospheric Archive',
       temp: 19,
     };
   }

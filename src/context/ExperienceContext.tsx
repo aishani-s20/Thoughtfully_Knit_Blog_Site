@@ -24,7 +24,6 @@ interface ExperienceContextType {
   // Weather / Atmosphere
   weatherMode: 'auto' | WeatherCondition;
   activeWeather: WeatherCondition;
-  weatherCity: string;
   weatherTemp: number;
   setWeatherMode: (mode: 'auto' | WeatherCondition) => void;
 
@@ -130,16 +129,14 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
   // 3. Weather State
   const [weatherMode, setWeatherModeState] = useState<'auto' | WeatherCondition>('auto');
   const [activeWeather, setActiveWeather] = useState<WeatherCondition>('rain');
-  const [weatherCity, setWeatherCity] = useState('Atmospheric Sensing');
   const [weatherTemp, setWeatherTemp] = useState(20);
 
   useEffect(() => {
     let isMounted = true;
     if (weatherMode === 'auto') {
-      detectLocalWeather().then(({ condition, city, temp }) => {
+      detectLocalWeather().then(({ condition, temp }) => {
         if (isMounted) {
           setActiveWeather(condition);
-          setWeatherCity(city);
           setWeatherTemp(temp);
           if (isFeatureEnabled('weather_adaptation')) {
             soundscapeEngine.setWeatherLayer(condition);
@@ -269,7 +266,6 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
 
         weatherMode,
         activeWeather,
-        weatherCity,
         weatherTemp,
         setWeatherMode,
 
