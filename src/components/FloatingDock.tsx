@@ -11,10 +11,11 @@ import {
   MessageSquareQuote,
   Sliders,
   ChevronUp,
-  Activity,
+  Music,
 } from 'lucide-react';
 import { useExperience } from '../context/ExperienceContext.tsx';
 import { WeatherCondition } from '../types/index.ts';
+import { PRESET_SOUNDSCAPES } from '../config/soundscapes.ts';
 
 export const FloatingDock: React.FC = () => {
   const {
@@ -23,8 +24,8 @@ export const FloatingDock: React.FC = () => {
     volume,
     setVolume,
     toggleAudio,
-    currentChordName,
-    currentSentiment,
+    activeSoundscape,
+    setActiveSoundscape,
 
     weatherMode,
     activeWeather,
@@ -59,21 +60,49 @@ export const FloatingDock: React.FC = () => {
     }
   };
 
+  const getWeatherSoundLabel = (cond: WeatherCondition) => {
+    switch (cond) {
+      case 'rain':
+        return 'Gentle Rain Layer';
+      case 'clear':
+        return 'Open Air';
+      case 'night':
+        return 'Night Air';
+      case 'fog':
+        return 'Coastal Breeze';
+    }
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto">
       {/* 1. Popover for Ambient Audio Controls */}
       {audioExpanded && isFeatureEnabled('ambient_soundscape') && (
-        <div className="p-3.5 mb-1 w-64 bg-stone-900/90 text-stone-100 backdrop-blur-md border border-stone-700/60 rounded-xl shadow-2xl space-y-3 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div className="p-3.5 mb-1 w-72 bg-stone-900/90 text-stone-100 backdrop-blur-md border border-stone-700/60 rounded-xl shadow-2xl space-y-3 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-stone-200 uppercase tracking-wider text-[11px]">
-              Ambient Soundscape
-            </span>
-            <span className="font-mono-code text-[10px] text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">
-              {currentChordName}
+            <span className="font-semibold text-stone-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+              <span>Natural Soundscape</span>
             </span>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
+            <select
+              value={activeSoundscape.id}
+              onChange={(e) => setActiveSoundscape(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-700 bg-stone-800 text-stone-200 focus:outline-hidden"
+            >
+              {PRESET_SOUNDSCAPES.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-stone-400 italic leading-snug">
+              {activeSoundscape.description}
+            </p>
+          </div>
+
+          <div className="space-y-1.5 pt-1 border-t border-stone-800">
             <div className="flex justify-between text-stone-400 text-[11px]">
               <span>Volume</span>
               <span className="font-mono-code">{Math.round(volume * 100)}%</span>
@@ -90,25 +119,28 @@ export const FloatingDock: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] text-stone-400 font-mono-code">
-            <span className="flex items-center gap-1">
-              <Activity className="w-3 h-3 text-emerald-400" />
-              <span>Valence: {currentSentiment.valence.toFixed(2)}</span>
+            <span className="text-amber-400">
+              Weather Layer: {getWeatherSoundLabel(activeWeather)}
             </span>
-            <span>Arousal: {currentSentiment.arousal.toFixed(2)}</span>
           </div>
         </div>
       )}
 
-      {/* 2. Popover for Weather / Atmosphere */}
+      {/* 2. Popover for Weather / Atmospheric Acoustics */}
       {weatherExpanded && isFeatureEnabled('weather_adaptation') && (
-        <div className="p-3 mb-1 w-56 bg-stone-900/90 text-stone-100 backdrop-blur-md border border-stone-700/60 rounded-xl shadow-2xl space-y-2 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
-          <div className="flex items-center justify-between pb-1 border-b border-stone-800">
-            <span className="font-semibold text-stone-200 uppercase tracking-wider text-[11px]">
-              Atmosphere Mode
-            </span>
-            <span className="font-mono-code text-[10px] text-stone-400">
-              {weatherTemp}°C
-            </span>
+        <div className="p-3 mb-1 w-64 bg-stone-900/90 text-stone-100 backdrop-blur-md border border-stone-700/60 rounded-xl shadow-2xl space-y-2 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <div className="pb-1 border-b border-stone-800">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-stone-200 uppercase tracking-wider text-[11px]">
+                Atmospheric Sound Layer
+              </span>
+              <span className="font-mono-code text-[10px] text-stone-400">
+                {weatherTemp}°C
+              </span>
+            </div>
+            <p className="text-[10px] text-stone-400 mt-0.5">
+              Modifies background ambient noise & tone; poem text stays unaltered.
+            </p>
           </div>
 
           <div className="space-y-1">
@@ -145,7 +177,7 @@ export const FloatingDock: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   {getWeatherIcon(cond)}
-                  <span>{cond}</span>
+                  <span>{cond} Layer</span>
                 </div>
                 {weatherMode === cond && <span className="text-[10px]">Override</span>}
               </button>
@@ -175,7 +207,7 @@ export const FloatingDock: React.FC = () => {
 
       {/* MAIN FLOATING GLASSMORPHIC DOCK CONTAINER */}
       <div className="flex items-center gap-1.5 p-1.5 bg-stone-900/85 backdrop-blur-md text-stone-200 border border-stone-700/50 rounded-2xl shadow-2xl">
-        {/* Toggle 1: Ambient Audio */}
+        {/* Toggle 1: Ambient Soundscape */}
         {isFeatureEnabled('ambient_soundscape') && (
           <div className="flex items-center">
             <button
@@ -185,8 +217,8 @@ export const FloatingDock: React.FC = () => {
                   ? 'bg-amber-600/30 text-amber-400 border border-amber-500/40'
                   : 'hover:bg-stone-800 text-stone-400 hover:text-stone-200'
               }`}
-              title={audioEnabled ? 'Mute ambient soundscape' : 'Start ambient soundscape'}
-              aria-label="Toggle ambient audio"
+              title={audioEnabled ? `Pause ${activeSoundscape.name}` : `Play ${activeSoundscape.name}`}
+              aria-label="Toggle ambient soundscape"
             >
               {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -202,7 +234,7 @@ export const FloatingDock: React.FC = () => {
           </div>
         )}
 
-        {/* Toggle 2: Weather Mode */}
+        {/* Toggle 2: Weather Layer */}
         {isFeatureEnabled('weather_adaptation') && (
           <button
             onClick={() => {
@@ -215,8 +247,8 @@ export const FloatingDock: React.FC = () => {
                 ? 'bg-stone-800 text-amber-300'
                 : 'hover:bg-stone-800 text-stone-300'
             }`}
-            title={`Atmosphere: ${weatherMode === 'auto' ? `Auto (${activeWeather})` : activeWeather}`}
-            aria-label="Weather mode selector"
+            title={`Atmospheric Sound: ${weatherMode === 'auto' ? `Auto (${activeWeather})` : activeWeather}`}
+            aria-label="Atmospheric sound layer selector"
           >
             {getWeatherIcon(activeWeather)}
           </button>

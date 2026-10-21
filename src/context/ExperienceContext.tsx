@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { FeatureModule, WeatherCondition, Poem } from '../types/index.ts';
-import { loadFeaturesFromStorage, saveFeaturesToStorage, INITIAL_FEATURES } from '../config/features.ts';
+import { loadFeaturesFromStorage, saveFeaturesToStorage } from '../config/features.ts';
 import { INITIAL_POEMS } from '../data/poems.ts';
 import { soundscapeEngine } from '../services/audioEngine.ts';
 import { detectLocalWeather } from '../services/weatherService.ts';
+import { NaturalSoundscape, getSoundscapeById } from '../config/soundscapes.ts';
 
 interface ExperienceContextType {
   // Feature flags
@@ -12,13 +13,13 @@ interface ExperienceContextType {
   toggleFeature: (id: string) => void;
   addCustomFeature: (name: string, description: string, category: FeatureModule['category']) => void;
 
-  // Audio / Soundscape
+  // Predetermined Audio / Soundscape
   audioEnabled: boolean;
   volume: number;
   setVolume: (vol: number) => void;
   toggleAudio: () => Promise<void>;
-  currentChordName: string;
-  currentSentiment: { valence: number; arousal: number };
+  activeSoundscape: NaturalSoundscape;
+  setActiveSoundscape: (id: string) => void;
 
   // Weather / Atmosphere
   weatherMode: 'auto' | WeatherCondition;
@@ -33,21 +34,19 @@ interface ExperienceContextType {
   spotlightRadius: number;
   setSpotlightRadius: (r: number) => void;
 
-  // Reading Navigation & Stanza Sync
+  // Reading Navigation
   activePoemSlug: string | null;
   setActivePoemSlug: (slug: string | null) => void;
-  activeStanzaIndex: number;
-  setActiveStanzaIndex: (idx: number) => void;
+
+  // Visual Theme (Parchment vs Obsidian)
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 
   // Drawers & Modals
   isChatOpen: boolean;
   setIsChatOpen: (open: boolean) => void;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (open: boolean) => void;
-
-  // Visual Theme (Parchment vs Obsidian)
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
 
   // Catalog
   poems: Poem[];
@@ -56,7 +55,7 @@ interface ExperienceContextType {
 
 const ExperienceContext = createContext<ExperienceContextType | undefined>(undefined);
 
-const POEMS_STORAGE_KEY = 'thoughtfully_knit_catalog';
+const POEMS_STORAGE_KEY = 'thoughtfully_knit_catalog_v2';
 
 export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // 1. Features
@@ -95,8 +94,7 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
   // 2. Audio State
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [volume, setVolumeState] = useState(0.45);
-  const [currentChordName, setCurrentChordName] = useState('Ambient Rest');
-  const [currentSentiment, setCurrentSentiment] = useState({ valence: 0.0, arousal: 0.25 });
+  const [activeSoundscape, setActiveSoundscapeState] = useState<NaturalSoundscape>(() => soundscapeEngine.getCurrentPreset());
 
   const setVolume = (v: number) => {
     setVolumeState(v);
@@ -111,9 +109,14 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
       const started = await soundscapeEngine.start();
       if (started) {
         setAudioEnabled(true);
-        setCurrentChordName(soundscapeEngine.getCurrentChordName());
       }
     }
+  };
+
+  const setActiveSoundscape = (id: string) => {
+    const preset = getSoundscapeById(id);
+    setActiveSoundscapeState(preset);
+    soundscapeEngine.setSoundscape(id);
   };
 
   // If feature is disabled by user, stop audio
@@ -138,34 +141,42 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
           setActiveWeather(condition);
           setWeatherCity(city);
           setWeatherTemp(temp);
+          if (isFeatureEnabled('weather_adaptation')) {
+            soundscapeEngine.setWeatherLayer(condition);
+          }
         }
       });
     } else {
       setActiveWeather(weatherMode);
+      if (isFeatureEnabled('weather_adaptation')) {
+        soundscapeEngine.setWeatherLayer(weatherMode);
+      }
     }
     return () => {
       isMounted = false;
     };
-  }, [weatherMode]);
+  }, [weatherMode, isFeatureEnabled]);
 
   const setWeatherMode = (mode: 'auto' | WeatherCondition) => {
     setWeatherModeState(mode);
     if (mode !== 'auto') {
       setActiveWeather(mode);
+      if (isFeatureEnabled('weather_adaptation')) {
+        soundscapeEngine.setWeatherLayer(mode);
+      }
     }
   };
 
   // 4. Spotlight State
   const [spotlightEnabled, setSpotlightEnabled] = useState(true);
-  const [spotlightRadius, setSpotlightRadius] = useState(190);
+  const [spotlightRadius, setSpotlightRadius] = useState(210);
 
   const toggleSpotlight = () => {
     setSpotlightEnabled((prev) => !prev);
   };
 
-  // 5. Reading Navigation & Stanza Tracking
+  // 5. Reading Navigation
   const [activePoemSlug, setActivePoemSlug] = useState<string | null>(null);
-  const [activeStanzaIndex, setActiveStanzaIndexState] = useState(0);
 
   // 6. Visual Theme (Light Parchment vs Dark Obsidian)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -175,7 +186,7 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
     } catch {
       /* noop */
     }
-    return 'light'; // Default to pristine warm archival paper
+    return 'light';
   });
 
   useEffect(() => {
@@ -201,14 +212,13 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // 7. Catalog
+  // 8. Catalog
   const [poems, setPoems] = useState<Poem[]>(() => {
     try {
       const stored = localStorage.getItem(POEMS_STORAGE_KEY);
       if (stored) {
         const parsed: Poem[] = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge to ensure default master poems exist
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].fullText) {
           const existingSlugs = new Set(parsed.map((p) => p.slug));
           const missingDefaults = INITIAL_POEMS.filter((p) => !existingSlugs.has(p.slug));
           return [...parsed, ...missingDefaults];
@@ -232,24 +242,15 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
     });
   };
 
-  // Whenever active stanza changes in active poem, sync sentiment with audio engine!
-  const setActiveStanzaIndex = useCallback(
-    (idx: number) => {
-      setActiveStanzaIndexState(idx);
-      if (activePoemSlug) {
-        const poem = poems.find((p) => p.slug === activePoemSlug);
-        if (poem && poem.stanzas[idx]) {
-          const stanza = poem.stanzas[idx];
-          setCurrentSentiment(stanza.sentiment);
-          if (audioEnabled && isFeatureEnabled('ambient_soundscape')) {
-            soundscapeEngine.updateSentiment(stanza.sentiment.valence, stanza.sentiment.arousal);
-            setCurrentChordName(soundscapeEngine.getCurrentChordName());
-          }
-        }
+  // Whenever active poem changes, automatically crossfade to its predetermined soundscape!
+  useEffect(() => {
+    if (activePoemSlug) {
+      const poem = poems.find((p) => p.slug === activePoemSlug);
+      if (poem && poem.soundscapeId) {
+        setActiveSoundscape(poem.soundscapeId);
       }
-    },
-    [activePoemSlug, poems, audioEnabled, isFeatureEnabled]
-  );
+    }
+  }, [activePoemSlug, poems]);
 
   return (
     <ExperienceContext.Provider
@@ -263,8 +264,8 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
         volume,
         setVolume,
         toggleAudio,
-        currentChordName,
-        currentSentiment,
+        activeSoundscape,
+        setActiveSoundscape,
 
         weatherMode,
         activeWeather,
@@ -279,16 +280,14 @@ export const ExperienceProvider: React.FC<{ children: ReactNode }> = ({ children
 
         activePoemSlug,
         setActivePoemSlug,
-        activeStanzaIndex,
-        setActiveStanzaIndex,
+
+        theme,
+        toggleTheme,
 
         isChatOpen,
         setIsChatOpen,
         isSettingsOpen,
         setIsSettingsOpen,
-
-        theme,
-        toggleTheme,
 
         poems,
         addPublishedPoem,

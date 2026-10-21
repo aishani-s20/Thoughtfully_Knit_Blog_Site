@@ -5,31 +5,31 @@ export const INITIAL_FEATURES: FeatureModule[] = [
     id: 'focus_spotlight',
     name: 'Focus Spotlight',
     category: 'sensory',
-    description: 'Hardware-accelerated CSS radial contrast mask following cursor and scroll for deep reading immersion.',
+    description: 'Hardware-accelerated reading focus mask that keeps current text in full focus while softening peripheral lines.',
     enabled: true,
     badge: 'Sensory',
   },
   {
     id: 'ambient_soundscape',
-    name: 'Ambient Soundscape',
+    name: 'Predetermined Nature Sounds',
     category: 'sensory',
-    description: 'Procedural Web Audio harmonic chords dynamically shaped by the active stanza emotional valence and arousal.',
+    description: 'Authentic nature sounds (rain, sea waves, morning birds, night crickets, fire, wind) tagged by theme and chosen by AI to match the entire poem as a cohesive work.',
     enabled: true,
-    badge: 'Generative',
+    badge: 'Nature Sounds',
   },
   {
     id: 'weather_adaptation',
-    name: 'Weather Verse Adaptation',
+    name: 'Atmospheric Sound Layering',
     category: 'atmosphere',
-    description: 'Grounds poetry in your local weather (via Open-Meteo) or manual dock override with subtle stanza line transitions.',
+    description: 'Adapts acoustic soundscapes to real-time weather (rain patter, night drones, coastal breeze) without altering poem text.',
     enabled: true,
-    badge: 'Grounding',
+    badge: 'Acoustic Layer',
   },
   {
     id: 'rag_archive_chat',
     name: 'Ask the Archive (RAG)',
     category: 'intelligence',
-    description: 'Conversational assistant with streaming token responses, citing stanzas and private author backstory notes.',
+    description: 'Conversational assistant with streaming token responses, citing verse and private author backstory notes.',
     enabled: true,
     badge: 'Gemini RAG',
   },
@@ -37,17 +37,9 @@ export const INITIAL_FEATURES: FeatureModule[] = [
     id: 'author_studio',
     name: 'Author Ingestion Studio',
     category: 'authoring',
-    description: 'Interactive in-browser workbench to write, split stanzas, score 2D sentiment, and publish new works to the archive.',
+    description: 'Interactive workbench to evaluate entire poems and predict the best predetermined soundscape profile.',
     enabled: true,
     badge: 'Workbench',
-  },
-  {
-    id: 'gaze_experimental',
-    name: 'Paced Typography Scroll',
-    category: 'sensory',
-    description: 'Soft auto-pacer that gently tracks verse reading cadence and stanza dwell time.',
-    enabled: false,
-    badge: 'Experimental',
   },
 ];
 
@@ -58,7 +50,6 @@ export function loadFeaturesFromStorage(): FeatureModule[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const saved: FeatureModule[] = JSON.parse(raw);
-      // Merge with initial list to make sure any newly added defaults exist
       const savedMap = new Map(saved.map((f) => [f.id, f]));
       return INITIAL_FEATURES.map((feat) => {
         if (savedMap.has(feat.id)) {

@@ -68,7 +68,9 @@ export const ArchiveChatDrawer: React.FC = () => {
                 title: activePoem.title,
                 subtitle: activePoem.subtitle,
                 authorNotes: activePoem.authorNotes,
-                stanzas: activePoem.stanzas.map((s) => ({ index: s.index, baseText: s.baseText })),
+                fullText: activePoem.fullText,
+                soundscapeName: activePoem.soundscapeName,
+                soundscapeRationale: activePoem.soundscapeRationale,
               }
             : null,
           poemsContext: poems.map((p) => ({

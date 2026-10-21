@@ -24,9 +24,20 @@ if (apiKey) {
   });
 }
 
-// -------------------------------------------------------------
-// 1. Ingestion Pipeline: Stanza Splitting & 2D Sentiment Scoring
-// -------------------------------------------------------------
+// Predetermined natural soundscape recordings available in Thoughtfully Knit
+const AVAILABLE_SOUNDSCAPES_PROMPT = `
+Predetermined Natural Soundscapes (Authentic nature recordings, zero musical chords):
+1. "steady_rain" (Rain Sound - Tags: rain, water, grief, solitude, window, monsoon, roof): Gentle rain sound pattering on roof, leaves, and window glass.
+2. "ocean_waves" (Sea Sound - Tags: sea, ocean, waves, shore, coast, cliff, tide, distance): Rhythmic sea waves and coastal surf rolling against the shore and receding.
+3. "morning_birds" (Morning Birds Sound - Tags: birds, morning, dawn, meadow, sunlight, trees, spring, hope): Fresh morning songbirds singing in a dawn meadow with a gentle breeze.
+4. "night_crickets" (Night Crickets Sound - Tags: night, crickets, darkness, stars, stillness, midnight, silence): Soothing nocturnal field crickets under a quiet starlit sky.
+5. "crackling_hearth" (Fireplace & Hearth Sound - Tags: fire, hearth, embers, warmth, craft, wood, winter, cabin): Warm crackling fireplace with burning wood logs and gentle embers.
+6. "mountain_wind" (Mountain Wind Sound - Tags: wind, pines, mountain, air, altitude, solitude, stone): Serene mountain wind softly moving through wild pine trees.
+`;
+
+// ----------------------------------------------------------------------
+// 1. Ingestion Pipeline: Whole-Text Evaluation & Soundscape Selection
+// ----------------------------------------------------------------------
 app.post('/api/gemini/ingest', async (req, res) => {
   try {
     const { rawMarkdown } = req.body;
@@ -40,18 +51,16 @@ app.post('/api/gemini/ingest', async (req, res) => {
       });
     }
 
-    const prompt = `Analyze this poetry or essay manuscript for the "Thoughtfully Knit" publication platform.
-Extract metadata, split into distinct stanzas, and compute 2D emotional sentiment coordinates for ambient generative audio.
+    const prompt = `Analyze this poetry or literary essay manuscript as a SINGLE COHESIVE WORK for the "Thoughtfully Knit" publication platform.
 
-Coordinates:
-- Valence: float from -1.0 (melancholic, dark, grief, existential) to +1.0 (bright, joyful, serene, transcendent)
-- Arousal: float from 0.0 (still, muted, quiet, whispered) to 1.0 (intense, kinetic, stormy, loud)
-- Dominant emotion: 2-3 words (e.g. "Contemplative Rain", "Quiet Resignation", "Luminous Hope")
-- Musical Key: Suggested musical key for ambient chord mapping (e.g., "D Minor 9th", "F Lydian", "A Dorian")
+DO NOT divide the text into stanzas or chop it up. Treat the entire manuscript as an unbroken literary piece.
+DO NOT generate text variations for weather—the author's text must remain completely authentic and unchanged.
 
-Also generate atmospheric weather-adapted variations for each stanza (Rain, Clear, Night, Fog) that preserve the rhythm and meaning while subtly altering imagery.
+Select the SINGLE BEST MATCHING PREDETERMINED SOUNDSCAPE from the curated library below based on the emotional core, imagery, and atmosphere of the entire poem:
 
-Manuscript content:
+${AVAILABLE_SOUNDSCAPES_PROMPT}
+
+Manuscript:
 ${rawMarkdown}`;
 
     const response = await ai.models.generateContent({
@@ -69,38 +78,26 @@ ${rawMarkdown}`;
               items: { type: Type.STRING },
             },
             authorNotes: { type: Type.STRING },
-            stanzas: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  index: { type: Type.INTEGER },
-                  baseText: { type: Type.STRING },
-                  weatherVariants: {
-                    type: Type.OBJECT,
-                    properties: {
-                      rain: { type: Type.STRING },
-                      clear: { type: Type.STRING },
-                      night: { type: Type.STRING },
-                      fog: { type: Type.STRING },
-                    },
-                  },
-                  sentiment: {
-                    type: Type.OBJECT,
-                    properties: {
-                      valence: { type: Type.NUMBER },
-                      arousal: { type: Type.NUMBER },
-                      dominantEmotion: { type: Type.STRING },
-                      musicalKey: { type: Type.STRING },
-                    },
-                    required: ['valence', 'arousal', 'dominantEmotion', 'musicalKey'],
-                  },
-                },
-                required: ['index', 'baseText', 'sentiment'],
-              },
+            fullText: { type: Type.STRING, description: 'The complete unbroken text of the poem exactly as written, preserving intentional line breaks.' },
+            selectedSoundscapeId: {
+              type: Type.STRING,
+              description: 'Must be one of: steady_rain, ocean_waves, morning_birds, night_crickets, crackling_hearth, mountain_wind',
             },
+            soundscapeName: { type: Type.STRING, description: 'Human-readable title of the chosen soundscape' },
+            soundscapeRationale: { type: Type.STRING, description: '1-2 sentences explaining why this acoustic soundscape matches the poem' },
+            overallMood: { type: Type.STRING, description: '2-4 words summarizing the overall emotional mood' },
           },
-          required: ['title', 'subtitle', 'tags', 'stanzas'],
+          required: [
+            'title',
+            'subtitle',
+            'tags',
+            'authorNotes',
+            'fullText',
+            'selectedSoundscapeId',
+            'soundscapeName',
+            'soundscapeRationale',
+            'overallMood',
+          ],
         },
       },
     });
@@ -114,9 +111,9 @@ ${rawMarkdown}`;
   }
 });
 
-// -------------------------------------------------------------
+// ----------------------------------------------------------------------
 // 2. Ask the Archive: Streaming SSE Literary RAG Chat
-// -------------------------------------------------------------
+// ----------------------------------------------------------------------
 app.post('/api/gemini/chat', async (req, res) => {
   try {
     const { message, activePoem, poemsContext } = req.body;
@@ -128,36 +125,35 @@ app.post('/api/gemini/chat', async (req, res) => {
       return res.status(503).json({ error: 'Gemini API key is not configured.' });
     }
 
-    // Prepare contextual literature prompt
     let contextPrompt = `You are the Literary Custodian and Archivist of "Thoughtfully Knit", an interactive publication that weaves poetry, architecture, machine learning, and human sensory experience.\n\n`;
 
     if (activePoem) {
-      contextPrompt += `CURRENTLY OPEN POEM:
+      contextPrompt += `CURRENTLY OPEN WORK:
 Title: "${activePoem.title}" (${activePoem.subtitle})
+Acoustic Soundscape: ${activePoem.soundscapeName} (${activePoem.soundscapeRationale})
 Author Notes / Hidden Backstory:
 ${activePoem.authorNotes}
 
-Stanzas:
-${activePoem.stanzas?.map((s: { index: number; baseText: string }) => `[Stanza ${s.index + 1}]\n${s.baseText}`).join('\n\n')}
+Complete Verse:
+${activePoem.fullText}
 \n---\n`;
     }
 
     if (Array.isArray(poemsContext) && poemsContext.length > 0) {
-      contextPrompt += `OTHER POEMS IN THE ARCHIVE:\n`;
+      contextPrompt += `OTHER WORKS IN THE ARCHIVE:\n`;
       poemsContext.forEach((p: { title: string; tags: string[]; authorNotes: string }) => {
         if (p.title !== activePoem?.title) {
-          contextPrompt += `- "${p.title}" (Themes: ${p.tags?.join(', ') || 'General'}): ${p.authorNotes?.slice(0, 180)}...\n`;
+          contextPrompt += `- "${p.title}" (Themes: ${p.tags?.join(', ') || 'General'}): ${p.authorNotes?.slice(0, 160)}...\n`;
         }
       });
       contextPrompt += `\n---\n`;
     }
 
     contextPrompt += `GUIDELINES:
-- Speak with quiet literary grace, depth, and precision. Avoid hyperbole or marketing jargon.
-- When answering questions about meaning, metaphor, or imagery, cite specific stanzas and author notes where relevant.
-- Address questions thoughtfully, whether about the philosophy of the poem, the sensory soundscapes, the weather variations, or the craft of writing.`;
+- Speak with quiet literary grace, depth, and precision. Avoid hyperbole or artificial hype.
+- When answering questions about meaning, metaphor, or acoustic soundscapes, refer to the author notes and poem themes.
+- Emphasize that poetry text is sacred and remains constant, while the ambient soundscape breathes and reacts to the weather outside.`;
 
-    // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -197,9 +193,9 @@ ${activePoem.stanzas?.map((s: { index: number; baseText: string }) => `[Stanza $
   }
 });
 
-// -------------------------------------------------------------
+// ----------------------------------------------------------------------
 // 3. Vite Middleware mounting for SPA
-// -------------------------------------------------------------
+// ----------------------------------------------------------------------
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 

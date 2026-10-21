@@ -1,26 +1,5 @@
 export type WeatherCondition = 'rain' | 'clear' | 'fog' | 'night';
 
-export interface StanzaSentiment {
-  valence: number; // -1.0 (melancholic/dark) to +1.0 (bright/transcendent)
-  arousal: number; // 0.0 (still/calm) to 1.0 (tense/intense)
-  dominantEmotion: string;
-  musicalKey?: string;
-}
-
-export interface Stanza {
-  id: string;
-  index: number;
-  baseText: string;
-  weatherVariants: {
-    rain?: string;
-    clear?: string;
-    fog?: string;
-    night?: string;
-  };
-  sentiment: StanzaSentiment;
-  embedding?: number[];
-}
-
 export interface Poem {
   id: string;
   slug: string;
@@ -32,7 +11,11 @@ export interface Poem {
   coverGradient: string;
   tags: string[];
   authorNotes: string;
-  stanzas: Stanza[];
+  fullText: string; // The complete, unbroken literary text
+  soundscapeId: string; // ID of the LLM-chosen predetermined soundscape
+  soundscapeName: string;
+  soundscapeRationale: string;
+  overallMood: string;
 }
 
 export type FeatureCategory = 'sensory' | 'atmosphere' | 'intelligence' | 'authoring' | 'platform';
@@ -54,17 +37,8 @@ export interface ExperienceSettings {
   activeWeather: WeatherCondition;
   spotlightEnabled: boolean;
   spotlightRadius: number; // px
-  spotlightMode: 'cursor' | 'scroll' | 'center';
-  activeStanzaIndex: number;
   isChatOpen: boolean;
   isSettingsOpen: boolean;
-}
-
-export interface ChatCitation {
-  poemTitle: string;
-  poemSlug: string;
-  stanzaIndex: number;
-  textSnippet: string;
 }
 
 export interface ChatMessage {
@@ -72,5 +46,4 @@ export interface ChatMessage {
   sender: 'user' | 'archive';
   text: string;
   timestamp: string;
-  citations?: ChatCitation[];
 }

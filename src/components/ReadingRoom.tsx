@@ -1,17 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ArrowLeft,
   Volume2,
   CloudRain,
+  Sun,
+  Moon,
+  Cloud,
   MessageSquareQuote,
-  Sparkles,
   BookOpen,
   ChevronDown,
-  Activity,
-  Layers,
+  Music,
+  Info,
 } from 'lucide-react';
 import { useExperience } from '../context/ExperienceContext.tsx';
-import { Poem, Stanza } from '../types/index.ts';
+import { Poem, WeatherCondition } from '../types/index.ts';
 
 interface ReadingRoomProps {
   poemSlug: string;
@@ -25,51 +27,45 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ poemSlug, onBack, onNa
     activeWeather,
     isFeatureEnabled,
     spotlightEnabled,
-    activeStanzaIndex,
-    setActiveStanzaIndex,
     audioEnabled,
     toggleAudio,
-    currentChordName,
+    activeSoundscape,
     setIsChatOpen,
   } = useExperience();
 
   const poem = poems.find((p) => p.slug === poemSlug) || poems[0];
-  const stanzaRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [showAuthorNotes, setShowAuthorNotes] = useState(false);
-
-  // IntersectionObserver to detect which stanza is currently centered in viewport
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute('data-stanza-index'));
-            if (!isNaN(index)) {
-              setActiveStanzaIndex(index);
-            }
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: '-30% 0px -40% 0px', // Center active zone
-        threshold: 0.2,
-      }
-    );
-
-    stanzaRefs.current.forEach((el) => {
-      if (el) observer.observe(el);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [poem, setActiveStanzaIndex]);
 
   // Find next and prev poems
   const currentIndex = poems.findIndex((p) => p.slug === poem.slug);
   const prevPoem = currentIndex > 0 ? poems[currentIndex - 1] : null;
   const nextPoem = currentIndex < poems.length - 1 ? poems[currentIndex + 1] : null;
+
+  const getWeatherIcon = (cond: WeatherCondition) => {
+    switch (cond) {
+      case 'rain':
+        return <CloudRain className="w-3.5 h-3.5 text-sky-500" />;
+      case 'clear':
+        return <Sun className="w-3.5 h-3.5 text-amber-500" />;
+      case 'night':
+        return <Moon className="w-3.5 h-3.5 text-indigo-400" />;
+      case 'fog':
+        return <Cloud className="w-3.5 h-3.5 text-stone-400" />;
+    }
+  };
+
+  const getWeatherSoundDescription = (cond: WeatherCondition) => {
+    switch (cond) {
+      case 'rain':
+        return 'Layering gentle rain sound';
+      case 'clear':
+        return 'Gentle open air breeze';
+      case 'night':
+        return 'Peaceful nocturnal crickets';
+      case 'fog':
+        return 'Soft coastal mist and wind';
+    }
+  };
 
   return (
     <div className="min-w-full pb-32 animate-in fade-in duration-300">
@@ -84,25 +80,28 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ poemSlug, onBack, onNa
             <span>Return to Archive</span>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            {/* Atmospheric Sound Indicator */}
             {isFeatureEnabled('weather_adaptation') && (
-              <span className="flex items-center gap-1 font-mono-code text-[11px] text-stone-600 dark:text-stone-400 capitalize">
-                <CloudRain className="w-3 h-3 text-sky-500" />
-                <span>{activeWeather} variant active</span>
+              <span className="flex items-center gap-1.5 font-mono-code text-[11px] text-stone-600 dark:text-stone-300">
+                {getWeatherIcon(activeWeather)}
+                <span className="hidden sm:inline capitalize">{activeWeather} Acoustics</span>
               </span>
             )}
 
+            {/* Predetermined Soundscape Button */}
             {isFeatureEnabled('ambient_soundscape') && (
               <button
                 onClick={toggleAudio}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-mono-code text-[11px] transition-colors ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono-code text-[11px] transition-colors ${
                   audioEnabled
-                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                    : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/60'
+                    : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
+                title="Toggle ambient soundscape"
               >
-                <Volume2 className="w-3 h-3" />
-                <span>{audioEnabled ? currentChordName : 'Sound Off'}</span>
+                <Volume2 className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <span className="font-medium">{audioEnabled ? poem.soundscapeName : 'Sound Off'}</span>
               </button>
             )}
           </div>
@@ -110,9 +109,9 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ poemSlug, onBack, onNa
       </div>
 
       {/* Main Reading Room Container */}
-      <main className="max-w-2xl mx-auto px-6 pt-16 space-y-16">
+      <main className="max-w-2xl mx-auto px-6 pt-16 space-y-12">
         {/* Poem Header */}
-        <header className="space-y-4 text-center border-b border-stone-200/80 dark:border-stone-800/80 pb-12">
+        <header className="space-y-4 text-center border-b border-stone-200/80 dark:border-stone-800/80 pb-10">
           <div className="flex items-center justify-center gap-2 text-xs font-mono-code text-stone-400 uppercase tracking-widest">
             <span>{poem.publishedAt}</span>
             <span aria-hidden="true">·</span>
@@ -139,64 +138,40 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ poemSlug, onBack, onNa
               </span>
             ))}
           </div>
+
+          {/* Predetermined Soundscape & Acoustic Profile Card */}
+          {isFeatureEnabled('ambient_soundscape') && (
+            <div className="mt-4 pt-4 border-t border-stone-100 dark:border-stone-800/60 max-w-lg mx-auto">
+              <div className="flex items-center justify-center gap-2 text-xs text-stone-600 dark:text-stone-300">
+                <Volume2 className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+                <span className="font-medium">Natural Soundscape: {poem.soundscapeName}</span>
+                <span aria-hidden="true">·</span>
+                <span className="font-mono-code text-[11px] text-stone-400">{poem.overallMood}</span>
+              </div>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 italic mt-1 leading-normal">
+                "{poem.soundscapeRationale}"
+              </p>
+              {isFeatureEnabled('weather_adaptation') && (
+                <p className="text-[10px] font-mono-code text-stone-400 mt-1 flex items-center justify-center gap-1">
+                  <span>{getWeatherSoundDescription(activeWeather)}</span>
+                </p>
+              )}
+            </div>
+          )}
         </header>
 
-        {/* Stanzas List */}
+        {/* Complete Unbroken Poem Text */}
         <article
           id="reading-prose"
-          className={`space-y-16 leading-relaxed ${
+          className={`py-4 space-y-8 leading-relaxed font-editorial text-xl sm:text-2xl text-stone-900 dark:text-stone-100 whitespace-pre-wrap tracking-wide font-normal ${
             spotlightEnabled && isFeatureEnabled('focus_spotlight') ? 'spotlight-reading-mask' : ''
           }`}
         >
-          {poem.stanzas.map((stanza, idx) => {
-            const isActive = activeStanzaIndex === idx;
-
-            // Pick text based on weather adaptation
-            let renderedText = stanza.baseText;
-            if (isFeatureEnabled('weather_adaptation') && stanza.weatherVariants[activeWeather]) {
-              renderedText = stanza.weatherVariants[activeWeather]!;
-            }
-
-            return (
-              <div
-                key={stanza.id}
-                ref={(el) => {
-                  stanzaRefs.current[idx] = el;
-                }}
-                data-stanza-index={idx}
-                className={`group relative p-6 sm:p-8 rounded-2xl transition-all duration-300 ${
-                  isActive
-                    ? 'bg-stone-50/70 dark:bg-[#181615] border border-stone-200/80 dark:border-stone-800 shadow-xs'
-                    : 'opacity-75 hover:opacity-100'
-                }`}
-              >
-                {/* Active Stanza Emotional Telemetry Indicator */}
-                <div className="flex items-center justify-between text-xs text-stone-400 mb-4 pb-2 border-b border-stone-200/50 dark:border-stone-800/50">
-                  <span className="font-mono-code text-[11px] tracking-wider uppercase">
-                    Stanza {idx + 1} of {poem.stanzas.length}
-                  </span>
-
-                  <div className="flex items-center gap-3 font-mono-code text-[11px]">
-                    <span className="text-stone-600 dark:text-stone-300">
-                      {stanza.sentiment.dominantEmotion}
-                    </span>
-                    <span className="hidden sm:inline text-amber-700 dark:text-amber-400">
-                      {stanza.sentiment.musicalKey}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Stanza Verse Typography */}
-                <div className="font-editorial text-xl sm:text-2xl text-stone-900 dark:text-stone-100 whitespace-pre-wrap leading-relaxed tracking-wide font-normal">
-                  {renderedText}
-                </div>
-              </div>
-            );
-          })}
+          {poem.fullText}
         </article>
 
         {/* Author Notes & Backstory Section */}
-        <section className="pt-12 border-t border-stone-200 dark:border-stone-800 space-y-4">
+        <section className="pt-10 border-t border-stone-200 dark:border-stone-800 space-y-4">
           <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#1a1816] overflow-hidden">
             <button
               onClick={() => setShowAuthorNotes(!showAuthorNotes)}
@@ -231,7 +206,7 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ poemSlug, onBack, onNa
                     className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition-colors border border-purple-200 dark:border-purple-800"
                   >
                     <MessageSquareQuote className="w-3.5 h-3.5" />
-                    <span>Converse with Archivist about these notes</span>
+                    <span>Converse with Archivist about this piece</span>
                   </button>
                 </div>
               </div>

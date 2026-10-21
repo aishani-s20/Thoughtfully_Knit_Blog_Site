@@ -117,7 +117,7 @@ export const CuratedGallery: React.FC<CuratedGalleryProps> = ({ onSelectPoem, on
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPoems.map((poem, idx) => {
             const isFeatured = idx === 0 && selectedTag === 'All';
-            const firstStanza = poem.stanzas[0];
+            const firstLine = poem.fullText ? poem.fullText.split('\n').filter(Boolean)[0] : '';
 
             return (
               <article
@@ -136,7 +136,7 @@ export const CuratedGallery: React.FC<CuratedGalleryProps> = ({ onSelectPoem, on
                 >
                   <div className="flex items-center justify-between text-[11px] font-mono-code text-stone-300/80 uppercase tracking-widest z-10">
                     <span>{poem.tags[0] || 'Poem'}</span>
-                    <span>{poem.stanzas.length} Stanzas</span>
+                    <span>{poem.soundscapeName}</span>
                   </div>
 
                   {/* Atmospheric Monograph Typography on Canvas */}
@@ -161,7 +161,7 @@ export const CuratedGallery: React.FC<CuratedGalleryProps> = ({ onSelectPoem, on
                 <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
                   <div className="space-y-3">
                     <p className="font-editorial italic text-stone-600 dark:text-stone-300 text-sm leading-relaxed line-clamp-2">
-                      "{firstStanza?.baseText.split('\n')[0]}..."
+                      "{firstLine}..."
                     </p>
 
                     <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed">
@@ -176,7 +176,7 @@ export const CuratedGallery: React.FC<CuratedGalleryProps> = ({ onSelectPoem, on
                       <span aria-hidden="true">·</span>
                       <span>{poem.readTime}</span>
                       <span aria-hidden="true">·</span>
-                      <span>{poem.publishedAt}</span>
+                      <span className="hidden sm:inline font-mono-code text-[11px] text-amber-700 dark:text-amber-400">{poem.overallMood}</span>
                     </div>
 
                     <span className="font-mono-code text-stone-600 dark:text-stone-300 text-[11px] group-hover:translate-x-0.5 transition-transform flex items-center gap-1 font-medium">
