@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    
+    --focus-x: 50%;
+    --focus-y: 50%;
+    --focus-radius: 190px;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #fbf9f5;
+    color: #292524;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+}
+
+.font-editorial {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-sans-ui {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.font-mono-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stanza Reading Focus Mask: Softens peripheral verse to 20% opacity without altering page background */
+.spotlight-reading-mask {
+  mask-image: radial-gradient(
+    circle var(--focus-radius) at var(--focus-x) var(--focus-y),
+    rgba(0, 0, 0, 1) 40%,
+    rgba(0, 0, 0, 0.22) 90%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle var(--focus-radius) at var(--focus-x) var(--focus-y),
+    rgba(0, 0, 0, 1) 40%,
+    rgba(0, 0, 0, 0.22) 90%
+  );
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+}
